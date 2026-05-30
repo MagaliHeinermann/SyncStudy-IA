@@ -1,6 +1,7 @@
 import streamlit as st
 import pdfplumber
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 # 1. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS VISUALES
 st.set_page_config(
@@ -33,7 +34,6 @@ st.markdown('<p class="subtitle">Optimiza tu material de estudio y genera cuesti
 # 2. VALIDACIÓN DE CREDENCIALES INTEGRADAS (SECRETS)
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=api_key)
 else:
     api_key = None
 
@@ -89,14 +89,24 @@ if boton_procesar:
     elif not texto_final:
         st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
-        with st.spinner("Gemini está analizando tu material de estudio de forma estructurada..."):
-            # LLAMADA CLÁSICA DEFINITIVA CON EL MODELO VIGENTE DE PRODUCCIÓN
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            
-            prompt_completo = f"{system_prompt}\n\nAnaliza el siguiente texto de estudio:\n{texto_final}"
-            response = model.generate_content(prompt_completo)
-            
-            st.session_state['resultado_analisis'] = response.text
+        with st.spinner("Gemini está analizando tu material de estudio..."):
+            try:
+                # INICIALIZACIÓN CON LA SDK MODERNA Y SEGURA
+                client = genai.Client(api_key=api_key)
+                
+                # Usamos el modelo insignia de producción estable con la llamada corregida
+                response = client.models.generate_content(
+                    model='gemini-2.5-flash',
+                    contents=texto_final,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=0.3
+                    )
+                )
+                
+                st.session_state['resultado_analisis'] = response.text
+            except Exception as e:
+                st.error(f"Error al procesar con los servidores de Gemini: {e}")
 
 # 6. ENTRADA DE RESULTADOS (OUTPUTS)
 if 'resultado_analisis' in st.session_state:
