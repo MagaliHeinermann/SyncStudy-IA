@@ -68,7 +68,7 @@ if archivo_pdf is not None:
     with pdfplumber.open(archivo_pdf) as pdf:
         paginas = [pagina.extract_text() for pagina in pdf.pages if pagina.extract_text()]
         texto_final = "\n".join(paginas)
-    st.success("¡PDF cargado exitosamente en memoria!")
+    st.success("¡PDF cargado exitosamente inyectado en memoria!")
 elif texto_manual:
     texto_final = texto_manual
 
@@ -77,7 +77,7 @@ st.markdown("### 2. Ejecutar Análisis Inteligente")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
 system_prompt = """
-Eres un expert instruccional y pedagógico avanzado. Tu objetivo es optimizar el material de estudio provisto por el usuario para facilitar el aprendizaje autónomo.
+Eres un experto instruccional y pedagógico avanzado. Tu objetivo es optimizar el material de estudio provisto por el usuario para facilitar el aprendizaje autónomo.
 
 Al recibir el texto o documento:
 1. Genera una estructura jerárquica con los conceptos centrales y sus definiciones analíticas.
@@ -94,9 +94,9 @@ if boton_procesar:
         st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
         with st.spinner("Gemini está analizando tu material de estudio..."):
-            # Estructura limpia y plana para evitar cualquier error de indentación
+            # Usamos el identificador técnico de producción estable para forzar el enrutamiento
             model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
+                model_name='gemini-1.5-flash-001',
                 system_instruction=system_prompt
             )
             response = model.generate_content(texto_final)
@@ -116,7 +116,7 @@ if 'resultado_analisis' in st.session_state:
     if pregunta_usuario:
         with st.spinner("Buscando respuestas..."):
             model_chat = genai.GenerativeModel(
-                model_name='gemini-1.5-flash',
+                model_name='gemini-1.5-flash-001',
                 system_instruction=system_prompt
             )
             prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
