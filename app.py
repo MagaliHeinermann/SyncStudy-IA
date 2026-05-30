@@ -105,8 +105,9 @@ if boton_procesar:
                         config=types.GenerateContentConfig(
                             system_instruction=system_prompt,
                             temperature=0.3
+                            )
                         )
-                    )
+                )
                 st.session_state['resultado_analisis'] = response.text
                 st.session_state['contexto_documento'] = texto_final
             except Exception as e:
