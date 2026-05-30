@@ -76,6 +76,7 @@ elif texto_manual:
 st.markdown("### 2. Ejecutar Análisis Inteligente")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
+
 system_prompt = """
 Eres un experto instruccional y pedagógico avanzado. Tu objetivo es optimizar el material de estudio provisto por el usuario para facilitar el aprendizaje autónomo.
 
@@ -97,9 +98,9 @@ if boton_procesar:
             try:
                 # LLAMADA CLÁSICA DE GENERACIÓN: ULTRA COMPATIBLE CON CUALQUIER ENTORNO
                 model = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
-                    generation_config={"temperature": 0.3},
-                    system_instruction=system_prompt
+                 model_name="models/gemini-1.5-flash",  # Ruta calificada completa
+                 generation_config={"temperature": 0.3},
+                 system_instruction=system_prompt
                 )
                 response = model.generate_content(texto_final)
                 
@@ -123,10 +124,10 @@ if 'resultado_analisis' in st.session_state:
         with st.spinner("Buscando respuestas en el contexto..."):
             try:
                 model_chat = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash",
-                    generation_config={"temperature": 0.2},
-                    system_instruction=system_prompt
-                )
+                 model_name="models/gemini-1.5-flash",  # Ruta calificada completa
+                 generation_config={"temperature": 0.2},
+                 system_instruction=system_prompt
+                 )
                 prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
                 response_chat = model_chat.generate_content(prompt_consulta)
                 st.info(response_chat.text)
