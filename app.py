@@ -1,6 +1,6 @@
 import streamlit as st
 import pdfplumber
-import google.generativeai as genai  # Librería clásica inmune a errores de módulos
+import google.generativeai as genai
 
 # 1. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS VISUALES
 st.set_page_config(
@@ -30,25 +30,26 @@ st.markdown("""
 st.markdown('<h1 class="main-title">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Optimiza tu material de estudio y genera cuestionarios interactivos con IA</p>', unsafe_allow_html=True)
 
-# 2. VALIDACIÓN SEGURA DE LA API KEY INTEGRADA (SECRETS)
+# 2. SELECCIÓN SEGURA DE LA API KEY INTEGRADA (SECRETS)
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=api_key)  # Configuración global clásica
+    # Configuración del core global de la API clásica
+    genai.configure(api_key=api_key)
 else:
     api_key = None
 
-# Barra lateral informativa requerida por la consigna
+# Barra lateral informativa
 st.sidebar.header("Información del Proyecto")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Curso:** IA: Prompt Engineering")
 st.sidebar.markdown("**Comisión:** 95840")
 st.sidebar.markdown("---")
 if api_key:
-    st.sidebar.success("🔑 API de Gemini vinculada de forma segura")
+    st.sidebar.success("🔑 API de Gemini vinculada correctamente")
 else:
-    st.sidebar.warning("⚠️ Esperando configuración de API Key")
+    st.sidebar.warning("⚠️ Configurando credenciales...")
 
-# 3. EXPANDER INFORMATIVO "CÓMO FUNCIONA"
+# 3. EXPANDER INFORMATIVO
 with st.expander("ℹ️ ¿Cómo funciona tu producto? ¡Lee esto antes de empezar!"):
     st.markdown("""
     ### Características clave:
@@ -76,7 +77,6 @@ elif texto_manual:
 st.markdown("### 2. Ejecutar Análisis Inteligente")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
-
 system_prompt = """
 Eres un experto instruccional y pedagógico avanzado. Tu objetivo es optimizar el material de estudio provisto por el usuario para facilitar el aprendizaje autónomo.
 
@@ -94,21 +94,21 @@ if boton_procesar:
     elif not texto_final:
         st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
-        with st.spinner("Gemini está analizando tu material de estudio de forma estructurada..."):
+        with st.spinner("Gemini está analizando tu material de estudio..."):
             try:
-                # LLAMADA CLÁSICA DE GENERACIÓN: ULTRA COMPATIBLE CON CUALQUIER ENTORNO
-                model = genai.GenerativeModel(
-                 model_name="gemini-1.5-flash-latest",  # Este alias destraba el error 404 en la nube
-                    generation_config={"temperature": 0.3},
-                    system_instruction=system_prompt
-                )
-                response = model.generate_content(texto_final)
+                # LLAMADA ROBUSTA USANDO EL MODELO DIRECTO DE TEXTO DE GOOGLE
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
-                # Almacenamos el resultado en el session_state
+                response = model.generate_content(
+                    texto_final,
+                    generation_config={"temperature": 0.3},
+                    contents=None  # Evita duplicidad de argumentos en entornos antiguos
+                )
+                
                 st.session_state['resultado_analisis'] = response.text
                 st.session_state['contexto_documento'] = texto_final
             except Exception as e:
-                st.error(f"Error en la llamada a la API de Gemini: {e}")
+                st.error(f"Error en la comunicación con los servidores de Google: {e}")
 
 # 6. ENTRADA DE RESULTADOS Y COMPONENTE INTERACTIVO DE CHAT (OUTPUTS)
 if 'resultado_analisis' in st.session_state:
@@ -121,15 +121,15 @@ if 'resultado_analisis' in st.session_state:
     pregunta_usuario = st.text_input("Haz una pregunta específica sobre el texto analizado:")
     
     if pregunta_usuario:
-        with st.spinner("Buscando respuestas en el contexto..."):
+        with st.spinner("Buscando respuestas en el documento..."):
             try:
-                model_chat = genai.GenerativeModel(
-                    model_name="gemini-1.5-flash-latest",  # Alias estable aquí también
-                    generation_config={"temperature": 0.2},
-                    system_instruction=system_prompt
+                model_chat = genai.GenerativeModel('gemini-1.5-flash')
+                prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}\n\nInstrucción: Responde usando únicamente el contexto anterior de forma pedagógica."
+                
+                response_chat = model_chat.generate_content(
+                    prompt_consulta,
+                    generation_config={"temperature": 0.2}
                 )
-                prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
-                response_chat = model_chat.generate_content(prompt_consulta)
                 st.info(response_chat.text)
             except Exception as e:
                 st.error(f"Error en el chat: {e}")
