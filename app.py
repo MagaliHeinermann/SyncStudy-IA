@@ -1,11 +1,8 @@
-from http import client
-
 import streamlit as st
 import pdfplumber
-from google import genai
-from google.genai import types
+import google.generativeai as genai  # Librería clásica inmune a errores de módulos
 
-# 1. CONFIGURACIÓN DE LA PÁGINA
+# 1. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS VISUALES
 st.set_page_config(
     page_title="SyncStudy IA",
     page_icon="🧠",
@@ -33,13 +30,14 @@ st.markdown("""
 st.markdown('<h1 class="main-title">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">Optimiza tu material de estudio y genera cuestionarios interactivos con IA</p>', unsafe_allow_html=True)
 
-# 2. VALIDACIÓN DE CREDENCIALES INTEGRADAS (SECRETS)
+# 2. VALIDACIÓN SEGURA DE LA API KEY INTEGRADA (SECRETS)
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)  # Configuración global clásica
 else:
     api_key = None
 
-# Barra lateral informativa
+# Barra lateral informativa requerida por la consigna
 st.sidebar.header("Información del Proyecto")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Curso:** IA: Prompt Engineering")
@@ -50,7 +48,7 @@ if api_key:
 else:
     st.sidebar.warning("⚠️ Esperando configuración de API Key")
 
-# 3. EXPANDER EXPLICATIVO
+# 3. EXPANDER INFORMATIVO "CÓMO FUNCIONA"
 with st.expander("ℹ️ ¿Cómo funciona tu producto? ¡Lee esto antes de empezar!"):
     st.markdown("""
     ### Características clave:
@@ -59,7 +57,7 @@ with st.expander("ℹ️ ¿Cómo funciona tu producto? ¡Lee esto antes de empez
     * **Chat con el Documento:** Resuelve dudas puntuales basándose *únicamente* en el texto provisto.
     """)
 
-# 4. ENTRADAS DE DATOS
+# 4. COMPONENTES DE ENTRADA DE DATOS (INPUTS)
 st.markdown("### 1. Carga tu Material de Estudio")
 texto_manual = st.text_area("Copia y pega el texto de tu apunte aquí:", height=150, placeholder="Escribe o pega el contenido...")
 archivo_pdf = st.file_uploader("O sube un archivo académico (Formato PDF)", type=["pdf"])
@@ -74,7 +72,7 @@ if archivo_pdf is not None:
 elif texto_manual:
     texto_final = texto_manual
 
-# 5. PROCESAMIENTO CON LA API DE GEMINI
+# 5. LÓGICA DE PROCESAMIENTO Y BOTÓN DE ACCIÓN
 st.markdown("### 2. Ejecutar Análisis Inteligente")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
@@ -95,47 +93,45 @@ if boton_procesar:
     elif not texto_final:
         st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
-        with st.spinner("Gemini está analizando tu material..."):
+        with st.spinner("Gemini está analizando tu material de estudio de forma estructurada..."):
             try:
-                # LLAMADA LIMPIA CORREGIDA UTILIZANDO LA NUEVA SDK DE GOOGLE
-                response = client.models.generate_content(
-                     response = client.models.generate_content(
-                        model='gemini-1.5-pro',  # Cambiamos flash por pro para saltar el error de ruta 404
-                        contents=texto_final,
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_prompt,
-                            temperature=0.3
-                            )
-                        )
+                # LLAMADA CLÁSICA DE GENERACIÓN: ULTRA COMPATIBLE CON CUALQUIER ENTORNO
+                model = genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    generation_config={"temperature": 0.3},
+                    system_instruction=system_prompt
                 )
+                response = model.generate_content(texto_final)
+                
+                # Almacenamos el resultado en el session_state
                 st.session_state['resultado_analisis'] = response.text
                 st.session_state['contexto_documento'] = texto_final
             except Exception as e:
-                st.error(f"Error de conexión con la API de Gemini: {e}")
+                st.error(f"Error en la llamada a la API de Gemini: {e}")
 
-# 6. MUESTRA DE RESULTADOS Y CHAT COMPLEMENTARIO
+# 6. ENTRADA DE RESULTADOS Y COMPONENTE INTERACTIVO DE CHAT (OUTPUTS)
 if 'resultado_analisis' in st.session_state:
     st.markdown("---")
     st.markdown("### ✨ Material de Estudio Optimizado")
     st.write(st.session_state['resultado_analisis'])
     
     st.markdown("---")
-    st.markdown("### 💬 Chat con el Documento")
-    pregunta_usuario = st.text_input("Haz una pregunta específica sobre el texto:")
+    st.markdown("### 💬 Chat interactivo con el documento")
+    pregunta_usuario = st.text_input("Haz una pregunta específica sobre el texto analizado:")
     
     if pregunta_usuario:
-        with st.spinner("Buscando respuestas..."):
+        with st.spinner("Buscando respuestas en el contexto..."):
             try:
-                client = genai.Client(api_key=api_key)
+                model_chat = genai.GenerativeModel(
+                    model_name="gemini-1.5-flash",
+                    generation_config={"temperature": 0.2},
+                    system_instruction=system_prompt
+                )
                 prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
-                response_chat = client.models.generate_content(
-                     model='gemini-1.5-pro',  # Cambiamos aquí también a pro
-                     contents=prompt_consulta,
-                     config=types.GenerateContentConfig(
-                          system_instruction=system_prompt,
-                         temperature=0.2
-                          )
-                        )
+                response_chat = model_chat.generate_content(prompt_consulta)
                 st.info(response_chat.text)
             except Exception as e:
                 st.error(f"Error en el chat: {e}")
+
+st.markdown("---")
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem;'>SyncStudy IA © 2026 - Desarrollado con fines educativos.</p>", unsafe_allow_html=True)
