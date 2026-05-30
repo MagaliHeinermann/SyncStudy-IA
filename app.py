@@ -3,14 +3,13 @@ import pdfplumber
 from google import genai
 from google.genai import types
 
-# 1. CONFIGURACIÓN DE LA PÁGINA Y PALETA DE COLORES
+# 1. CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(
     page_title="SyncStudy IA",
     page_icon="🧠",
     layout="centered"
 )
 
-# Estilos CSS para mantener la estética limpia solicitada
 st.markdown("""
     <style>
     .main-title {
@@ -30,38 +29,35 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown('<h1 class="main-title">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Optimiza tu material de estudio y genera cuestionarios interactivos con Inteligencia Artificial</p>', unsafe_allow_html=True)
+st.markdown('<p class="subtitle">Optimiza tu material de estudio y genera cuestionarios interactivos con IA</p>', unsafe_allow_html=True)
 
-# 2. INTENTAR LEER LA API KEY INTEGRADA DESDE LOS SECRETOS SENSING
-# Intenta buscar la clave en Streamlit. Si no existe, avisa al desarrollador.
+# 2. VALIDACIÓN DE CREDENCIALES INTEGRADAS (SECRETS)
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
     api_key = None
 
-# 3. BARRA LATERAL: SOLO DATOS ACADÉMICOS (SIN SOLICITAR API KEY)
+# Barra lateral informativa
 st.sidebar.header("Información del Proyecto")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Curso:** IA: Prompt Engineering")
 st.sidebar.markdown("**Comisión:** 95840")
 st.sidebar.markdown("---")
-st.sidebar.success("🔑 API de Gemini integrada correctamente")
+if api_key:
+    st.sidebar.success("🔑 API de Gemini vinculada de forma segura")
+else:
+    st.sidebar.warning("⚠️ Esperando configuración de API Key")
 
-# 4. SECCIÓN "CÓMO FUNCIONA"
+# 3. EXPANDER EXPLICATIVO
 with st.expander("ℹ️ ¿Cómo funciona tu producto? ¡Lee esto antes de empezar!"):
     st.markdown("""
     ### Características clave:
     * **Síntesis Jerárquica:** Reduce textos densos a conceptos clave ordenados pedagógicamente.
     * **Estudio Activo:** Genera un cuestionario de 5 preguntas automatizadas para medir tu comprensión.
     * **Chat con el Documento:** Resuelve dudas puntuales basándose *únicamente* en el texto provisto.
-    
-    ### Cómo realizar solicitudes:
-    1. Copia y pega tu texto en el cuadro inferior o sube un archivo **PDF** académico.
-    2. Haz clic en el botón **"Procesar Material de Estudio"**.
-    3. ¡Listo! El sistema ya cuenta con la API Key integrada de forma segura.
     """)
 
-# 5. COMPONENTES DE ENTRADA DE DATOS
+# 4. ENTRADAS DE DATOS
 st.markdown("### 1. Carga tu Material de Estudio")
 texto_manual = st.text_area("Copia y pega el texto de tu apunte aquí:", height=150, placeholder="Escribe o pega el contenido...")
 archivo_pdf = st.file_uploader("O sube un archivo académico (Formato PDF)", type=["pdf"])
@@ -76,7 +72,7 @@ if archivo_pdf is not None:
 elif texto_manual:
     texto_final = texto_manual
 
-# 6. LÓGICA DE PROCESAMIENTO
+# 5. PROCESAMIENTO CON LA API DE GEMINI
 st.markdown("### 2. Ejecutar Análisis Inteligente")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
@@ -93,12 +89,13 @@ Mantén un tono académico, preciso y de alta claridad pedagógica.
 
 if boton_procesar:
     if not api_key:
-        st.error("Error de configuración: La clave de la API no está vinculada en las variables secretas de la aplicación.")
+        st.error("Error: Configura 'GEMINI_API_KEY' en el panel de Secrets de Streamlit Cloud.")
     elif not texto_final:
-        st.warning("Debes ingresar texto o subir un archivo PDF para poder procesarlo.")
+        st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
-        with st.spinner("Gemini está analizando y estructurando tu material pedagógico..."):
+        with st.spinner("Gemini está analizando tu material..."):
             try:
+                # LLAMADA LIMPIA CORREGIDA UTILIZANDO LA NUEVA SDK DE GOOGLE
                 client = genai.Client(api_key=api_key)
                 response = client.models.generate_content(
                     model='gemini-1.5-flash',
@@ -111,24 +108,23 @@ if boton_procesar:
                 st.session_state['resultado_analisis'] = response.text
                 st.session_state['contexto_documento'] = texto_final
             except Exception as e:
-                st.error(f"Ocurrió un error al conectar con Gemini API: {e}")
+                st.error(f"Error de conexión con la API de Gemini: {e}")
 
-# 7. DESPLIEGUE DE RESULTADOS
+# 6. MUESTRA DE RESULTADOS Y CHAT COMPLEMENTARIO
 if 'resultado_analisis' in st.session_state:
     st.markdown("---")
     st.markdown("### ✨ Material de Estudio Optimizado")
     st.write(st.session_state['resultado_analisis'])
     
-    # CHAT INTERACTIVO CON EL DOCUMENTO
     st.markdown("---")
-    st.markdown("### 💬 Pregúntale dudas específicas a tu documento")
-    pregunta_usuario = st.text_input("Haz una pregunta sobre el texto analizado:")
+    st.markdown("### 💬 Chat con el Documento")
+    pregunta_usuario = st.text_input("Haz una pregunta específica sobre el texto:")
     
     if pregunta_usuario:
-        with st.spinner("Buscando en el documento..."):
+        with st.spinner("Buscando respuestas..."):
             try:
                 client = genai.Client(api_key=api_key)
-                prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta del usuario: {pregunta_usuario}"
+                prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
                 response_chat = client.models.generate_content(
                     model='gemini-1.5-flash',
                     contents=prompt_consulta,
@@ -137,10 +133,6 @@ if 'resultado_analisis' in st.session_state:
                         temperature=0.2
                     )
                 )
-                st.markdown("**Respuesta del Asistente:**")
                 st.info(response_chat.text)
             except Exception as e:
-                st.error(f"Error en la consulta: {e}")
-
-st.markdown("---")
-st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem;'>SyncStudy IA © 2026 - Desarrollado con fines educativos.</p>", unsafe_allow_html=True)
+                st.error(f"Error en el chat: {e}")
