@@ -77,7 +77,7 @@ st.markdown("### 2. Ejecutar Análisis Inteligente")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
 system_prompt = """
-Eres un experto instruccional y pedagógico avanzado. Tu objetivo es optimizar el material de estudio provisto por el usuario para facilitar el aprendizaje autónomo.
+Eres un expert instruccional y pedagógico avanzado. Tu objetivo es optimizar el material de estudio provisto por el usuario para facilitar el aprendizaje autónomo.
 
 Al recibir el texto o documento:
 1. Genera una estructura jerárquica con los conceptos centrales y sus definiciones analíticas.
@@ -94,5 +94,34 @@ if boton_procesar:
         st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
         with st.spinner("Gemini está analizando tu material de estudio..."):
-            try:
-                # LLAMADA ULTRA-COMPATIBLE: Evita el conflicto
+            # Estructura limpia y plana para evitar cualquier error de indentación
+            model = genai.GenerativeModel(
+                model_name='gemini-1.5-flash',
+                system_instruction=system_prompt
+            )
+            response = model.generate_content(texto_final)
+            st.session_state['resultado_analisis'] = response.text
+            st.session_state['contexto_documento'] = texto_final
+
+# 6. ENTRADA DE RESULTADOS Y COMPONENTE INTERACTIVO DE CHAT (OUTPUTS)
+if 'resultado_analisis' in st.session_state:
+    st.markdown("---")
+    st.markdown("### ✨ Material de Estudio Optimizado")
+    st.write(st.session_state['resultado_analisis'])
+    
+    st.markdown("---")
+    st.markdown("### 💬 Chat interactivo con el documento")
+    pregunta_usuario = st.text_input("Haz una pregunta específica sobre el texto analizado:")
+    
+    if pregunta_usuario:
+        with st.spinner("Buscando respuestas..."):
+            model_chat = genai.GenerativeModel(
+                model_name='gemini-1.5-flash',
+                system_instruction=system_prompt
+            )
+            prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
+            response_chat = model_chat.generate_content(prompt_consulta)
+            st.info(response_chat.text)
+
+st.markdown("---")
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem;'>SyncStudy IA © 2026 - Desarrollado con fines educativos.</p>", unsafe_allow_html=True)
