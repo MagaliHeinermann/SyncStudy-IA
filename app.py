@@ -1,9 +1,8 @@
 import streamlit as st
 import pdfplumber
-from google import genai
-from google.genai import types
+import google.generativeai as genai
 
-# 1. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS VISUALES
+# 1. CONFIGURACIÓN DE LA PÁGINA Y PALETA DE COLORES
 st.set_page_config(
     page_title="SyncStudy IA",
     page_icon="🧠",
@@ -34,10 +33,11 @@ st.markdown('<p class="subtitle">Optimiza tu material de estudio y genera cuesti
 # 2. VALIDACIÓN DE CREDENCIALES INTEGRADAS (SECRETS)
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
+    genai.configure(api_key=api_key)
 else:
     api_key = None
 
-# Barra lateral informativa requerida por las pautas
+# Barra lateral informativa requerida por las pautas del proyecto
 st.sidebar.header("Información del Proyecto")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Curso:** IA: Prompt Engineering")
@@ -85,28 +85,19 @@ Al recibir el texto o documento:
 
 if boton_procesar:
     if not api_key:
-        st.error("Error: Configura 'GEMINI_API_KEY' en el panel de Secrets de Streamlit Cloud.")
+        st.error("Error: Configura 'GEMINI_API_KEY' in el panel de Secrets de Streamlit Cloud.")
     elif not texto_final:
         st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
         with st.spinner("Gemini está analizando tu material de estudio..."):
-            try:
-                # INICIALIZACIÓN CON LA SDK MODERNA Y SEGURA
-                client = genai.Client(api_key=api_key)
-                
-                # Usamos el modelo insignia de producción estable con la llamada corregida
-                response = client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=texto_final,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        temperature=0.3
-                    )
-                )
-                
-                st.session_state['resultado_analisis'] = response.text
-            except Exception as e:
-                st.error(f"Error al procesar con los servidores de Gemini: {e}")
+            # Inicialización clásica limpia con el modelo activo vigente
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            # Unimos las instrucciones y el texto en un único string plano para evitar fallas posicionales
+            prompt_completo = f"{system_prompt}\n\nAnaliza el siguiente texto de estudio:\n{texto_final}"
+            
+            response = model.generate_content(prompt_completo)
+            st.session_state['resultado_analisis'] = response.text
 
 # 6. ENTRADA DE RESULTADOS (OUTPUTS)
 if 'resultado_analisis' in st.session_state:
