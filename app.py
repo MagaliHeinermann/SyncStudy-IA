@@ -2,7 +2,7 @@ import streamlit as st
 import pdfplumber
 import google.generativeai as genai
 
-# 1. CONFIGURACIÓN DE LA PÁGINA Y PALETA DE COLORES
+# 1. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS VISUALES
 st.set_page_config(
     page_title="SyncStudy IA",
     page_icon="🧠",
@@ -68,7 +68,7 @@ if archivo_pdf is not None:
     with pdfplumber.open(archivo_pdf) as pdf:
         paginas = [pagina.extract_text() for pagina in pdf.pages if pagina.extract_text()]
         texto_final = "\n".join(paginas)
-    st.success("¡PDF cargado exitosamente inyectado en memoria!")
+    st.success("¡PDF cargado exitosamente en memoria!")
 elif texto_manual:
     texto_final = texto_manual
 
@@ -94,12 +94,13 @@ if boton_procesar:
         st.warning("Por favor, ingresa texto o sube un archivo PDF.")
     else:
         with st.spinner("Gemini está analizando tu material de estudio..."):
-            # Usamos el identificador técnico de producción estable para forzar el enrutamiento
-            model = genai.GenerativeModel(
-                model_name='gemini-1.5-flash-001',
-                system_instruction=system_prompt
-            )
-            response = model.generate_content(texto_final)
+            # Usamos el constructor clásico pasándole el modelo base que acepta el SDK por defecto
+            model = genai.GenerativeModel('gemini-pro')
+            
+            # Inyectamos el system prompt directamente dentro del flujo de generación para evitar fallas de inicialización
+            prompt_completo = f"{system_prompt}\n\nAnaliza el siguiente texto de estudio:\n{texto_final}"
+            
+            response = model.generate_content(prompt_completo)
             st.session_state['resultado_analisis'] = response.text
             st.session_state['contexto_documento'] = texto_final
 
@@ -115,11 +116,8 @@ if 'resultado_analisis' in st.session_state:
     
     if pregunta_usuario:
         with st.spinner("Buscando respuestas..."):
-            model_chat = genai.GenerativeModel(
-                model_name='gemini-1.5-flash-001',
-                system_instruction=system_prompt
-            )
-            prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
+            model_chat = genai.GenerativeModel('gemini-pro')
+            prompt_consulta = f"{system_prompt}\n\nContexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta del usuario: {pregunta_usuario}"
             response_chat = model_chat.generate_content(prompt_consulta)
             st.info(response_chat.text)
 
