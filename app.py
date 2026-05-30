@@ -99,14 +99,11 @@ if boton_procesar:
                 # LLAMADA ROBUSTA USANDO EL MODELO DIRECTO DE TEXTO DE GOOGLE
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 
-                response = model.generate_content(
-                    texto_final,
-                    generation_config={"temperature": 0.3},
-                    contents=None  # Evita duplicidad de argumentos en entornos antiguos
-                )
-                
+                response = model.generate_content(texto_final)
+
                 st.session_state['resultado_analisis'] = response.text
                 st.session_state['contexto_documento'] = texto_final
+          
             except Exception as e:
                 st.error(f"Error en la comunicación con los servidores de Google: {e}")
 
@@ -125,12 +122,9 @@ if 'resultado_analisis' in st.session_state:
             try:
                 model_chat = genai.GenerativeModel('gemini-1.5-flash')
                 prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}\n\nInstrucción: Responde usando únicamente el contexto anterior de forma pedagógica."
-                
-                response_chat = model_chat.generate_content(
-                    prompt_consulta,
-                    generation_config={"temperature": 0.2}
-                )
+                response_chat = model_chat.generate_content(prompt_consulta)
                 st.info(response_chat.text)
+             
             except Exception as e:
                 st.error(f"Error en el chat: {e}")
 
