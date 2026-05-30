@@ -98,9 +98,9 @@ if boton_procesar:
             try:
                 # LLAMADA CLÁSICA DE GENERACIÓN: ULTRA COMPATIBLE CON CUALQUIER ENTORNO
                 model = genai.GenerativeModel(
-                 model_name="models/gemini-1.5-flash",  # Ruta calificada completa
-                 generation_config={"temperature": 0.3},
-                 system_instruction=system_prompt
+                 model_name="gemini-1.5-flash-latest",  # Este alias destraba el error 404 en la nube
+                    generation_config={"temperature": 0.3},
+                    system_instruction=system_prompt
                 )
                 response = model.generate_content(texto_final)
                 
@@ -124,10 +124,10 @@ if 'resultado_analisis' in st.session_state:
         with st.spinner("Buscando respuestas en el contexto..."):
             try:
                 model_chat = genai.GenerativeModel(
-                 model_name="models/gemini-1.5-flash",  # Ruta calificada completa
-                 generation_config={"temperature": 0.2},
-                 system_instruction=system_prompt
-                 )
+                    model_name="gemini-1.5-flash-latest",  # Alias estable aquí también
+                    generation_config={"temperature": 0.2},
+                    system_instruction=system_prompt
+                )
                 prompt_consulta = f"Contexto del documento:\n{st.session_state['contexto_documento']}\n\nPregunta: {pregunta_usuario}"
                 response_chat = model_chat.generate_content(prompt_consulta)
                 st.info(response_chat.text)
