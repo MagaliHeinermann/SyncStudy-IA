@@ -98,13 +98,13 @@ if boton_procesar:
                 # LLAMADA LIMPIA CORREGIDA UTILIZANDO LA NUEVA SDK DE GOOGLE
                 client = genai.Client(api_key=api_key)
                 response = client.models.generate_content(
-                    model='gemini-1.5-flash',
-                    contents=texto_final,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        temperature=0.3
-                    )
-                )
+    model='gemini-1.5-pro',  # Cambiamos flash por pro para saltar el error de ruta 404
+    contents=texto_final,
+    config=types.GenerateContentConfig(
+        system_instruction=system_prompt,
+        temperature=0.3
+    )
+)
                 st.session_state['resultado_analisis'] = response.text
                 st.session_state['contexto_documento'] = texto_final
             except Exception as e:
