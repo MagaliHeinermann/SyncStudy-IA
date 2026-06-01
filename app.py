@@ -1,6 +1,7 @@
 import streamlit as st
 import pdfplumber
-import requests
+from google import genai
+from google.genai import types
 
 # 1. CONFIGURACIÓN DE LA PÁGINA
 st.set_page_config(
@@ -66,36 +67,23 @@ if boton_procesar:
     else:
         with st.spinner("Gemini está analizando tu material de estudio..."):
             try:
-                # ENDPOINT DEFINITIVO CON NOMBRE ENRUTADO DE MODELO ESTABLE
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                # Inicialización explícita con la SDK moderna
+                client = genai.Client(api_key=api_key)
                 
-                headers = {'Content-Type': 'application/json'}
+                # Llamada limpia al modelo oficial estable
+                response = client.models.generate_content(
+                    model='gemini-1.5-flash',
+                    contents=texto_final,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=0.3
+                    )
+                )
                 
-                # Payload estructurado de forma nativa para la API REST de Google
-                payload = {
-                    "contents": [{
-                        "parts": [{
-                            "text": f"{system_prompt}\n\nTexto de estudio a analizar:\n{texto_final}"
-                        }]
-                    }]
-                }
+                st.session_state['resultado_analisis'] = response.text
                 
-                response = requests.post(url, json=payload, headers=headers)
-                response_data = response.json()
-                
-                if response.status_code == 200:
-                    # Extracción del contenido de manera segura
-                    if 'candidates' in response_data and response_data['candidates']:
-                        text_output = response_data['candidates'][0]['content']['parts'][0]['text']
-                        st.session_state['resultado_analisis'] = text_output
-                    else:
-                        st.error("Google procesó la solicitud pero no devolvió texto. Revisa el formato de entrada.")
-                else:
-                    # Te muestra en pantalla el error exacto que da Google para saber qué pasa
-                    st.error(f"Error de Google (Código {response.status_code}): {response_data}")
-                    
             except Exception as e:
-                st.error(f"Error de conexión: {e}")
+                st.error(f"Error de comunicación con la API de Gemini: {e}")
 
 # 6. ENTRADA DE RESULTADOS
 if 'resultado_analisis' in st.session_state:
