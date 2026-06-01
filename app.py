@@ -10,34 +10,26 @@ st.set_page_config(
 )
 
 st.markdown('<h1 style="text-align: center; color: #1E3A8A;">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Optimiza tu material de estudio y genera cuestionarios interactivos con IA</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Optimiza tu material de estudio con IA</p>', unsafe_allow_html=True)
 
-# 2. SELECCIÓN DE CREDENCIALES DESDE LOS SECRETS
+# 2. SELECCIÓN DE CREDENCIALES
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 else:
     api_key = None
 
-# Barra lateral informativa requerida por la entrega
+# Barra lateral informativa requerida para la entrega
 st.sidebar.header("Información del Proyecto")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
 st.sidebar.markdown("---")
 if api_key:
-    st.sidebar.success("🔑 API de Gemini vinculada correctamente")
+    st.sidebar.success("🔑 API de Gemini vinculada en Secrets")
 else:
     st.sidebar.warning("⚠️ Esperando configuración de API Key...")
 
-# 3. EXPANDER INFORMATIVO
-with st.expander("ℹ️ ¿Cómo funciona tu producto?"):
-    st.markdown("""
-    * **Síntesis Jerárquica:** Reduce textos densos a conceptos clave ordenados pedagógicamente.
-    * **Estudio Activo:** Genera un cuestionario de 5 preguntas automatizadas para medir tu comprensión.
-    """)
-
-# 4. COMPONENTES DE ENTRADA
-st.markdown("### 1. Carga tu Material de Estudio")
+# 3. COMPONENTES DE ENTRADA
 texto_manual = st.text_area("Copia tu texto de estudio aquí:", height=150)
 archivo_pdf = st.file_uploader("O sube un archivo PDF", type=["pdf"])
 
@@ -45,12 +37,11 @@ texto_final = ""
 if archivo_pdf is not None:
     with pdfplumber.open(archivo_pdf) as pdf:
         texto_final = "\n".join([pagina.extract_text() for pagina in pdf.pages if pagina.extract_text()])
-    st.success("¡PDF cargado exitosamente!")
+    st.success("¡PDF cargado exitosamente en memoria!")
 elif texto_manual:
     texto_final = texto_manual
 
-# 5. BOTÓN DE ACCIÓN Y PROCESAMIENTO
-st.markdown("### 2. Ejecutar Análisis Inteligente")
+# 4. BOTÓN DE ACCIÓN Y PROCESAMIENTO
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
 system_prompt = (
@@ -68,16 +59,17 @@ if boton_procesar:
     else:
         with st.spinner("Gemini está analizando tu material..."):
             try:
-                # LLAMADA CLÁSICA COMPATIBLE
+                # LLAMADA ESTÁNDAR COMPATIBLE DE PRODUCCIÓN
                 model = genai.GenerativeModel('gemini-1.5-flash')
                 prompt_completo = f"{system_prompt}\n\nTexto a procesar:\n{texto_final}"
                 
                 response = model.generate_content(prompt_completo)
                 st.session_state['resultado_analisis'] = response.text
             except Exception as e:
-                st.error(f"Error en la llamada a la API: {e}")
+                # Muestra el error crudo del servidor para diagnóstico preciso
+                st.error(f"Error devuelto por el servidor de Google: {e}")
 
-# 6. DESPLIEGUE DE RESULTADOS
+# 5. DESPLIEGUE DE RESULTADOS
 if 'resultado_analisis' in st.session_state:
     st.markdown("---")
     st.markdown("### ✨ Material de Estudio Optimizado")
