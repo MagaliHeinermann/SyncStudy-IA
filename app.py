@@ -10,21 +10,34 @@ st.set_page_config(
 )
 
 st.markdown('<h1 style="text-align: center; color: #1E3A8A;">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Optimiza tu material de estudio con IA</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Optimiza tu material de estudio y genera cuestionarios interactivos con IA</p>', unsafe_allow_html=True)
 
-# 2. SELECCIÓN DE CREDENCIALES
+# 2. SELECCIÓN DE CREDENCIALES DESDE LOS SECRETS
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 else:
     api_key = None
 
-# Barra lateral informativa
+# Barra lateral informativa requerida por la entrega
 st.sidebar.header("Información del Proyecto")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
+st.sidebar.markdown("---")
+if api_key:
+    st.sidebar.success("🔑 API de Gemini vinculada correctamente")
+else:
+    st.sidebar.warning("⚠️ Esperando configuración de API Key...")
 
-# 3. COMPONENTES DE ENTRADA
+# 3. EXPANDER INFORMATIVO
+with st.expander("ℹ️ ¿Cómo funciona tu producto?"):
+    st.markdown("""
+    * **Síntesis Jerárquica:** Reduce textos densos a conceptos clave ordenados pedagógicamente.
+    * **Estudio Activo:** Genera un cuestionario de 5 preguntas automatizadas para medir tu comprensión.
+    """)
+
+# 4. COMPONENTES DE ENTRADA
+st.markdown("### 1. Carga tu Material de Estudio")
 texto_manual = st.text_area("Copia tu texto de estudio aquí:", height=150)
 archivo_pdf = st.file_uploader("O sube un archivo PDF", type=["pdf"])
 
@@ -36,10 +49,16 @@ if archivo_pdf is not None:
 elif texto_manual:
     texto_final = texto_manual
 
-# 4. BOTÓN DE ACCIÓN
+# 5. BOTÓN DE ACCIÓN Y PROCESAMIENTO
+st.markdown("### 2. Ejecutar Análisis Inteligente")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
-system_prompt = "Eres un experto instruccional. Genera una estructura jerárquica con los conceptos centrales y diseña un cuestionario de autoevaluación de 5 preguntas clave basadas estrictamente en el texto."
+system_prompt = (
+    "Eres un experto instruccional y pedagógico avanzado. Tu objetivo es optimizar el material de estudio "
+    "provisto por el usuario para facilitar el aprendizaje autónomo.\n"
+    "1. Genera una estructura jerárquica con los conceptos centrales y sus definiciones analíticas.\n"
+    "2. Diseña un cuestionario de autoevaluación de 5 preguntas clave basadas estrictamente en el texto para validar la comprensión lectora."
+)
 
 if boton_procesar:
     if not api_key:
@@ -49,17 +68,20 @@ if boton_procesar:
     else:
         with st.spinner("Gemini está analizando tu material..."):
             try:
-                # LLAMADA ESTÁNDAR COMPATIBLE
+                # LLAMADA CLÁSICA COMPATIBLE
                 model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt_completo = f"{system_prompt}\n\nTexto:\n{texto_final}"
+                prompt_completo = f"{system_prompt}\n\nTexto a procesar:\n{texto_final}"
                 
                 response = model.generate_content(prompt_completo)
                 st.session_state['resultado_analisis'] = response.text
             except Exception as e:
                 st.error(f"Error en la llamada a la API: {e}")
 
-# 5. RESULTADOS
+# 6. DESPLIEGUE DE RESULTADOS
 if 'resultado_analisis' in st.session_state:
     st.markdown("---")
     st.markdown("### ✨ Material de Estudio Optimizado")
     st.write(st.session_state['resultado_analisis'])
+
+st.markdown("---")
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
