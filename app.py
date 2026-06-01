@@ -36,7 +36,7 @@ if "GEMINI_API_KEY" in st.secrets:
 else:
     api_key = None
 
-# Barra lateral informativa
+# Barra lateral informativa requerida por la consigna
 st.sidebar.header("Información del Proyecto")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Curso:** IA: Prompt Engineering")
@@ -91,12 +91,11 @@ if boton_procesar:
     else:
         with st.spinner("Gemini está analizando tu material de estudio..."):
             try:
-                # LLAMADA DIRECTA POR HTTP REST: Inmune a errores de librerías locales o 404 de rutas
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+                # CAMBIO CLAVE: Usamos la versión v1 estable de producción
+                url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
                 
                 headers = {'Content-Type': 'application/json'}
                 
-                # Encapsulamos el contenido combinando el rol y el contexto
                 payload = {
                     "contents": [{
                         "parts": [{
@@ -111,15 +110,14 @@ if boton_procesar:
                 response = requests.post(url, json=payload, headers=headers)
                 response_data = response.json()
                 
-                # Extracción segura del texto generado en la respuesta JSON
                 if response.status_code == 200:
                     text_output = response_data['candidates'][0]['content']['parts'][0]['text']
                     st.session_state['resultado_analisis'] = text_output
                 else:
-                    st.error(f"Error del servidor de Google ({response.status_code}): {response_data.get('error', {}).get('message', 'Error desconocido')}")
+                    st.error(f"Error del servidor de Google ({response.status_code}): {response_data.get('error', {}).get('message', 'Error de enrutamiento')}")
                     
             except Exception as e:
-                st.error(f"Error inesperado en el procesamiento de la solicitud: {e}")
+                st.error(f"Error inesperado en la solicitud: {e}")
 
 # 6. ENTRADA DE RESULTADOS (OUTPUTS)
 if 'resultado_analisis' in st.session_state:
