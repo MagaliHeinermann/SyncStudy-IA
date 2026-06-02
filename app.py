@@ -1,8 +1,9 @@
 import streamlit as st
 import pdfplumber
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
-# 1. Configuración de Entorno y Estilos Nativos
+# 1. INITIALIZATION & LAYOUT
 st.set_page_config(
     page_title="SyncStudy IA",
     page_icon="🧠",
@@ -10,67 +11,78 @@ st.set_page_config(
 )
 
 st.markdown('<h1 style="text-align: center; color: #1E3A8A;">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
-st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Optimización de material de estudio con Inteligencia Artificial</p>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Plataforma de Optimización de Material de Estudio con IA</p>', unsafe_allow_html=True)
 
-# 2. Inicialización de Capa de Autenticación
+# 2. INYECCIÓN DE CREDENCIALES DESDE EL ENTORNO (ST.SECRETS)
 if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
-    genai.configure(api_key=api_key)
 else:
     api_key = None
 
-# Componente de depuración lateral para la entrega
-st.sidebar.header("Control de Despliegue")
+# Sidebar informativa de auditoría
+st.sidebar.header("Deployment Logs")
 st.sidebar.markdown("**Desarrolladora:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
 st.sidebar.markdown("---")
 if api_key:
-    st.sidebar.success("🔑 Credenciales cargadas en st.secrets")
+    st.sidebar.success("🔑 Token de autenticación montado")
 else:
-    st.sidebar.warning("⚠️ Esperando token de autenticación...")
+    st.sidebar.warning("⚠️ Variable GEMINI_API_KEY no detectada")
 
-# 3. Módulos de Entrada de Datos
-st.markdown("### 1. Carga de Material Académico")
-texto_manual = st.text_area("Pega el texto del apunte aquí:", height=150)
-archivo_pdf = st.file_uploader("O procesa un documento en formato PDF", type=["pdf"])
+# 3. COMPONENTES DE ENTRADA (INPUT LAYER)
+st.markdown("### 1. Carga de Documentación Académica")
+texto_manual = st.text_area("Pega tus apuntes o extractos de texto aquí:", height=150)
+archivo_pdf = st.file_uploader("O sube tu material en formato académico (PDF)", type=["pdf"])
 
 texto_final = ""
 if archivo_pdf is not None:
     with pdfplumber.open(archivo_pdf) as pdf:
         texto_final = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
-    st.success("Documento PDF parseado correctamente en memoria.")
+    st.success("Parser: PDF procesado correctamente en la memoria volatil de la sesión.")
 elif texto_manual:
     texto_final = texto_manual
 
-# 4. Pipeline de Inferencia
-st.markdown("### 2. Procesamiento de Información")
-boton_procesar = st.button("🚀 Ejecutar Análisis Jerárquico")
+# 4. PIPELINE DE INFERENCIA (CORE LAYER)
+st.markdown("### 2. Ejecutar Análisis Cognitivo")
+boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
 system_prompt = (
-    "Actúa como un diseñador instruccional experto. Analiza el texto provisto y genera:\n"
-    "1. Una estructura jerárquica con los conceptos centrales y sus respectivas definiciones analíticas.\n"
-    "2. Un cuestionario de autoevaluación interactivo compuesto por 5 preguntas clave basadas estrictamente en el texto."
+    "Actúa como un experto en diseño instruccional y pedagogía avanzada.\n"
+    "A partir del texto provisto por el usuario, debes generar de forma estructurada:\n"
+    "1. Una síntesis jerárquica con los conceptos centrales perfectamente definidos de forma analítica.\n"
+    "2. Un cuestionario interactivo de autoevaluación compuesto por 5 preguntas clave basadas estrictamente en la lectura."
 )
 
 if boton_procesar:
     if not api_key:
-        st.error("Error de configuración: GEMINI_API_KEY no inicializada en los secretos del servidor.")
+        st.error("Error de Backend: No se puede inicializar el cliente sin un token válido en st.secrets.")
     elif not texto_final:
-        st.warning("Entrada de datos vacía. Por favor provee un texto o archivo válido.")
+        st.warning("Validación fallida: El campo de entrada de datos no puede estar vacío.")
     else:
-        with st.spinner("Procesando consulta con el clúster de Gemini..."):
+        with st.spinner("Estableciendo conexión con el clúster de inferencia de Google..."):
             try:
-                # Instanciación limpia sobre el modelo estable de producción masiva
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                prompt_estructurado = f"{system_prompt}\n\n[TEXTO DE ESTUDIO]\n{texto_final}"
+                # Inicialización limpia utilizando la SDK moderna homologada para 2026
+                client = genai.Client(api_key=api_key)
                 
-                response = model.generate_content(prompt_estructurado)
-                st.session_state['payload_respuesta'] = response.text
+                # Invocación explícita mediante configuración de tipos nativos
+                response = client.models.generate_content(
+                    model='gemini-1.5-flash',
+                    contents=texto_final,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=0.3
+                    )
+                )
+                
+                st.session_state['data_output'] = response.text
             except Exception as e:
-                st.error(f"Excepción controlada del SDK de Google: {e}")
+                st.error(f"Error crítico en el handshake de la API externa: {e}")
 
-# 5. Despliegue de Resultados (Output)
-if 'payload_respuesta' in st.session_state:
+# 5. RENDERIZADO DE RESPUESTA (OUTPUT LAYER)
+if 'data_output' in st.session_state:
     st.markdown("---")
-    st.markdown("### ✨ Resultados del Análisis Pedagógico")
-    st.write(st.session_state['payload_respuesta'])
+    st.markdown("### ✨ Material de Estudio Optimizado")
+    st.write(st.session_state['data_output'])
+
+st.markdown("---")
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
