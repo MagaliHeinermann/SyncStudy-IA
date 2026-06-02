@@ -1,5 +1,7 @@
 import streamlit as st
 import pdfplumber
+import time
+
 from google import genai
 from google.genai import types
 
@@ -81,6 +83,7 @@ texto_final = ""
 if archivo_pdf is not None:
 
     try:
+
         with pdfplumber.open(archivo_pdf) as pdf:
 
             paginas = []
@@ -98,7 +101,7 @@ if archivo_pdf is not None:
 
     except Exception as e:
 
-        st.error(f"Error al procesar PDF: {e}")
+        st.error(f"❌ Error al procesar PDF: {e}")
 
 elif texto_manual:
 
@@ -136,7 +139,7 @@ La respuesta debe estar perfectamente organizada mediante títulos y subtítulos
 # FUNCIÓN PARA DIVIDIR TEXTO
 # =====================================================
 
-def dividir_texto(texto, tamaño=10000):
+def dividir_texto(texto, tamaño=30000):
 
     return [
         texto[i:i+tamaño]
@@ -163,7 +166,7 @@ if boton_procesar:
     if not api_key:
 
         st.error(
-            "❌ No se encontró GEMINI_API_KEY en los Secrets."
+            "❌ No se encontró GEMINI_API_KEY."
         )
 
     elif not texto_final.strip():
@@ -177,18 +180,18 @@ if boton_procesar:
         try:
 
             with st.spinner(
-                "🧠 Analizando material de estudio..."
+                "🧠 Analizando material..."
             ):
 
                 client = get_client()
 
-                # =========================================
+                # =====================================
                 # DIVIDIR TEXTO
-                # =========================================
+                # =====================================
 
                 partes = dividir_texto(
                     texto_final,
-                    tamaño=10000
+                    tamaño=30000
                 )
 
                 respuestas = []
@@ -199,11 +202,11 @@ if boton_procesar:
 
                     response = client.models.generate_content(
 
-                        # =====================================
-                        # GEMINI 2.5 FLASH
-                        # =====================================
+                        # =================================
+                        # GEMINI 1.5 FLASH
+                        # =================================
 
-                        model="gemini-2.5-flash",
+                        model="gemini-1.5-flash",
 
                         contents=parte,
 
@@ -213,11 +216,19 @@ if boton_procesar:
                         )
                     )
 
-                    respuestas.append(response.text)
+                    respuestas.append(
+                        response.text
+                    )
 
                     progreso.progress(
                         (i + 1) / len(partes)
                     )
+
+                    # =============================
+                    # EVITA SPAM DE REQUESTS
+                    # =============================
+
+                    time.sleep(2)
 
                 resultado_final = "\n\n".join(
                     respuestas
@@ -235,7 +246,7 @@ if boton_procesar:
 
             st.error(
                 f"""
-Error al comunicarse con Gemini:
+❌ Error al comunicarse con Gemini:
 
 {str(e)}
 """
