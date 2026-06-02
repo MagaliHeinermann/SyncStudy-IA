@@ -18,6 +18,7 @@ st.markdown(
     <h1 style="text-align:center; color:#1E3A8A;">
         🧠 SyncStudy IA
     </h1>
+
     <p style="text-align:center; color:#4B5563;">
         Optimización de material de estudio con Inteligencia Artificial
     </p>
@@ -26,18 +27,28 @@ st.markdown(
 )
 
 # =====================================================
-# AUTENTICACIÓN
+# API KEY
 # =====================================================
 
 api_key = st.secrets.get("GEMINI_API_KEY", None)
+
+# =====================================================
+# CACHE DEL CLIENTE
+# =====================================================
+
+@st.cache_resource
+def get_client():
+    return genai.Client(api_key=api_key)
 
 # =====================================================
 # SIDEBAR
 # =====================================================
 
 st.sidebar.header("Control de Despliegue")
+
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
+
 st.sidebar.markdown("---")
 
 if api_key:
@@ -63,14 +74,21 @@ archivo_pdf = st.file_uploader(
 
 texto_final = ""
 
-# Lectura de PDF
+# =====================================================
+# LECTURA DE PDF
+# =====================================================
+
 if archivo_pdf is not None:
+
     try:
         with pdfplumber.open(archivo_pdf) as pdf:
+
             paginas = []
 
             for page in pdf.pages:
+
                 contenido = page.extract_text()
+
                 if contenido:
                     paginas.append(contenido)
 
@@ -79,10 +97,22 @@ if archivo_pdf is not None:
         st.success("✅ PDF procesado correctamente.")
 
     except Exception as e:
+
         st.error(f"Error al procesar PDF: {e}")
 
 elif texto_manual:
+
     texto_final = texto_manual
+
+# =====================================================
+# INFO DEL TEXTO
+# =====================================================
+
+if texto_final:
+
+    st.info(
+        f"📄 Caracteres cargados: {len(texto_final):,}"
+    )
 
 # =====================================================
 # PROMPT DEL SISTEMA
@@ -103,7 +133,18 @@ La respuesta debe estar perfectamente organizada mediante títulos y subtítulos
 """
 
 # =====================================================
-# BOTÓN DE PROCESAMIENTO
+# FUNCIÓN PARA DIVIDIR TEXTO
+# =====================================================
+
+def dividir_texto(texto, tamaño=20000):
+
+    return [
+        texto[i:i+tamaño]
+        for i in range(0, len(texto), tamaño)
+    ]
+
+# =====================================================
+# BOTÓN
 # =====================================================
 
 st.markdown("### 2. Ejecutar Análisis Cognitivo")
@@ -114,43 +155,83 @@ boton_procesar = st.button(
 )
 
 # =====================================================
-# INFERENCIA IA
+# PROCESAMIENTO IA
 # =====================================================
 
 if boton_procesar:
 
     if not api_key:
+
         st.error(
-            "No se encontró GEMINI_API_KEY en los Secrets de Streamlit."
+            "❌ No se encontró GEMINI_API_KEY en los Secrets."
         )
 
     elif not texto_final.strip():
+
         st.warning(
-            "Debes ingresar texto o subir un PDF antes de procesar."
+            "⚠️ Debes ingresar texto o subir un PDF."
         )
 
     else:
+
         try:
-            with st.spinner("🧠 Analizando material de estudio..."):
 
-                client = genai.Client(
-                    api_key=api_key
+            with st.spinner(
+                "🧠 Analizando material de estudio..."
+            ):
+
+                client = get_client()
+
+                # =========================================
+                # DIVIDIR TEXTO EN PARTES
+                # =========================================
+
+                partes = dividir_texto(
+                    texto_final,
+                    tamaño=20000
                 )
 
-                response = client.models.generate_content(
-                    model="gemini-2.5-flash",
-                    contents=texto_final,
-                    config=types.GenerateContentConfig(
-                        system_instruction=system_prompt,
-                        temperature=0.3,
+                respuestas = []
+
+                progreso = st.progress(0)
+
+                for i, parte in enumerate(partes):
+
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=parte,
+                        config=types.GenerateContentConfig(
+                            system_instruction=system_prompt,
+                            temperature=0.3,
+                        )
                     )
+
+                    respuestas.append(response.text)
+
+                    progreso.progress(
+                        (i + 1) / len(partes)
+                    )
+
+                resultado_final = "\n\n".join(
+                    respuestas
                 )
 
-                st.session_state["data_output"] = response.text
+                st.session_state[
+                    "data_output"
+                ] = resultado_final
+
+                st.success(
+                    "✅ Material procesado correctamente."
+                )
 
         except Exception as e:
+
             st.error(
-                f"Error al comunicarse con Gemini:\n\n{str(e)}"
+                f"""
+Error al comunicarse con Gemini:
+
+{str(e)}
+"""
             )
 
 # =====================================================
@@ -160,32 +241,14 @@ if boton_procesar:
 if "data_output" in st.session_state:
 
     st.markdown("---")
-    st.markdown("## ✨ Material de Estudio Optimizado")
 
-    st.markdown(st.session_state["data_output"])
+    st.markdown(
+        "## ✨ Material de Estudio Optimizado"
+    )
 
-# =====================================================
-# DEPURACIÓN OPCIONAL
-# =====================================================
-
-if api_key:
-    with st.sidebar.expander("🔍 Diagnóstico de Gemini"):
-
-        try:
-            client = genai.Client(api_key=api_key)
-
-            modelos = []
-
-            for model in client.models.list():
-                modelos.append(model.name)
-
-            st.success(f"{len(modelos)} modelos detectados")
-
-            for modelo in modelos[:20]:
-                st.text(modelo)
-
-        except Exception as e:
-            st.error(f"No fue posible listar modelos: {e}")
+    st.markdown(
+        st.session_state["data_output"]
+    )
 
 # =====================================================
 # FOOTER
@@ -198,7 +261,9 @@ st.markdown(
     <p style='text-align:center;
               color:#9CA3AF;
               font-size:0.8rem;'>
+
         SyncStudy IA © 2026
+
     </p>
     """,
     unsafe_allow_html=True
