@@ -19,7 +19,7 @@ if "GEMINI_API_KEY" in st.secrets:
 else:
     api_key = None
 
-# Componente lateral informativo requerido para la entrega
+# Componente lateral informativo de auditoría
 st.sidebar.header("Control de Despliegue")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
@@ -27,7 +27,7 @@ st.sidebar.markdown("---")
 if api_key:
     st.sidebar.success("🔑 Token de autenticación montado en Secrets")
 else:
-    st.sidebar.warning("⚠️ Esperando inicialización de credenciales...")
+    st.sidebar.warning("⚠️ Variable GEMINI_API_KEY no detectada")
 
 # 3. CAPA DE ENTRADA DE DATOS (INPUT LAYER)
 st.markdown("### 1. Carga de Material Académico")
@@ -64,7 +64,7 @@ if boton_procesar:
                 # Inicialización limpia utilizando la SDK moderna oficial
                 client = genai.Client(api_key=api_key)
                 
-                # Invocación explícita mediante tipos nativos
+                # Invocación explícita mediante configuración de tipos nativos
                 response = client.models.generate_content(
                     model='gemini-1.5-flash',
                     contents=texto_final,
@@ -73,7 +73,6 @@ if boton_procesar:
                         temperature=0.3
                     )
                 )
-                
                 st.session_state['data_output'] = response.text
             except Exception as e:
                 st.error(f"Error crítico en el handshake de la API externa: {e}")
