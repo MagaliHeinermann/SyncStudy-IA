@@ -136,7 +136,7 @@ La respuesta debe estar perfectamente organizada mediante títulos y subtítulos
 # FUNCIÓN PARA DIVIDIR TEXTO
 # =====================================================
 
-def dividir_texto(texto, tamaño=20000):
+def dividir_texto(texto, tamaño=10000):
 
     return [
         texto[i:i+tamaño]
@@ -183,12 +183,12 @@ if boton_procesar:
                 client = get_client()
 
                 # =========================================
-                # DIVIDIR TEXTO EN PARTES
+                # DIVIDIR TEXTO
                 # =========================================
 
                 partes = dividir_texto(
                     texto_final,
-                    tamaño=20000
+                    tamaño=10000
                 )
 
                 respuestas = []
@@ -198,8 +198,15 @@ if boton_procesar:
                 for i, parte in enumerate(partes):
 
                     response = client.models.generate_content(
+
+                        # =====================================
+                        # GEMINI 2.5 FLASH
+                        # =====================================
+
                         model="gemini-2.5-flash",
+
                         contents=parte,
+
                         config=types.GenerateContentConfig(
                             system_instruction=system_prompt,
                             temperature=0.3,
