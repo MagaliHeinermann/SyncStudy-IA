@@ -77,7 +77,7 @@ archivo_pdf = st.file_uploader(
 texto_final = ""
 
 # =====================================================
-# LECTURA DE PDF
+# LECTURA PDF
 # =====================================================
 
 if archivo_pdf is not None:
@@ -108,7 +108,7 @@ elif texto_manual:
     texto_final = texto_manual
 
 # =====================================================
-# INFO DEL TEXTO
+# INFO TEXTO
 # =====================================================
 
 if texto_final:
@@ -136,7 +136,7 @@ La respuesta debe estar perfectamente organizada mediante títulos y subtítulos
 """
 
 # =====================================================
-# FUNCIÓN PARA DIVIDIR TEXTO
+# DIVIDIR TEXTO
 # =====================================================
 
 def dividir_texto(texto, tamaño=30000):
@@ -186,7 +186,7 @@ if boton_procesar:
                 client = get_client()
 
                 # =====================================
-                # DIVIDIR TEXTO
+                # DIVIDIR EN PARTES
                 # =====================================
 
                 partes = dividir_texto(
@@ -203,10 +203,10 @@ if boton_procesar:
                     response = client.models.generate_content(
 
                         # =================================
-                        # GEMINI 1.5 FLASH
+                        # MODELO GEMINI
                         # =================================
 
-                        model="gemini-1.5-flash",
+                        model="gemini-1.5-flash-8b",
 
                         contents=parte,
 
@@ -224,9 +224,9 @@ if boton_procesar:
                         (i + 1) / len(partes)
                     )
 
-                    # =============================
-                    # EVITA SPAM DE REQUESTS
-                    # =============================
+                    # =================================
+                    # EVITA MUCHAS REQUESTS
+                    # =================================
 
                     time.sleep(2)
 
