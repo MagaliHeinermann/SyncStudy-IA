@@ -35,7 +35,7 @@ st.markdown(
 api_key = st.secrets.get("GEMINI_API_KEY", None)
 
 # =====================================================
-# CACHE DEL CLIENTE
+# CLIENTE GEMINI
 # =====================================================
 
 @st.cache_resource
@@ -118,7 +118,7 @@ if texto_final:
     )
 
 # =====================================================
-# PROMPT DEL SISTEMA
+# PROMPT
 # =====================================================
 
 system_prompt = """
@@ -185,10 +185,6 @@ if boton_procesar:
 
                 client = get_client()
 
-                # =====================================
-                # DIVIDIR EN PARTES
-                # =====================================
-
                 partes = dividir_texto(
                     texto_final,
                     tamaño=30000
@@ -203,10 +199,10 @@ if boton_procesar:
                     response = client.models.generate_content(
 
                         # =================================
-                        # MODELO GEMINI
+                        # GEMINI 2.5 FLASH
                         # =================================
 
-                        model="gemini-1.5-flash-8b",
+                        model="gemini-2.5-flash-preview-05-20",
 
                         contents=parte,
 
@@ -223,10 +219,6 @@ if boton_procesar:
                     progreso.progress(
                         (i + 1) / len(partes)
                     )
-
-                    # =================================
-                    # EVITA MUCHAS REQUESTS
-                    # =================================
 
                     time.sleep(2)
 
@@ -253,7 +245,7 @@ if boton_procesar:
             )
 
 # =====================================================
-# SALIDA
+# RESULTADO
 # =====================================================
 
 if "data_output" in st.session_state:
