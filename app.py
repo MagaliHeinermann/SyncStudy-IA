@@ -12,7 +12,7 @@ st.set_page_config(
 st.markdown('<h1 style="text-align: center; color: #1E3A8A;">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
 st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Optimización de material de estudio con Inteligencia Artificial</p>', unsafe_allow_html=True)
 
-# 2. CAPA DE AUTENTICACIÓN (COHERE CLIENT V2)
+# 2. CAPA DE AUTENTICACIÓN
 if "COHERE_API_KEY" in st.secrets:
     api_key = st.secrets["COHERE_API_KEY"]
     co = cohere.ClientV2(api_key=api_key)
@@ -43,7 +43,7 @@ if archivo_pdf is not None:
 elif texto_manual:
     texto_final = texto_manual
 
-# 4. PIPELINE DE INFERENCIA (CORE LAYER)
+# 4. PIPELINE DE INFERENCIA CON SALVAGUARDA DE CONTEXTO
 st.markdown("### 2. Ejecutar Análisis Pedagógico")
 boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
@@ -62,6 +62,12 @@ if boton_procesar:
     else:
         with st.spinner("Cohere está procesando tu material de estudio..."):
             try:
+                # TRUCO DE PRODUCCIÓN: Sanitizado y truncado preventivo de tokens (máximo 250.000 caracteres)
+                # Esto asegura que nunca sobrepase el límite de tokens admitidos por la API gratuita
+                if len(texto_final) > 250000:
+                    texto_final = texto_final[:250000]
+                    st.warning("⚠️ El documento es extremadamente largo. Se optimizará la primera parte para evitar saturar el modelo.")
+
                 # LLAMADA AL MODELO VIGENTE DE PRODUCCIÓN
                 response = co.chat(
                     model="command-r7b-12-2024",
@@ -71,7 +77,6 @@ if boton_procesar:
                     ]
                 )
                 
-                # Extracción segura de la estructura V2
                 if response and response.message and response.message.content:
                     st.session_state['data_output'] = response.message.content[0].text
                 else:
