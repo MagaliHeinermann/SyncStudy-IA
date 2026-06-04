@@ -2,7 +2,7 @@ import streamlit as st
 import pdfplumber
 import cohere
 
-# 1. CONFIGURACIÓN DE LA INTERFAZ Y ESTILOS NATIVOS
+# 1. CONFIGURACIÓN DE LA INTERFAZ VISUAL
 st.set_page_config(
     page_title="SyncStudy IA",
     page_icon="🧠",
@@ -12,7 +12,7 @@ st.set_page_config(
 st.markdown('<h1 style="text-align: center; color: #1E3A8A;">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
 st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Plataforma de Optimización de Material de Estudio con IA</p>', unsafe_allow_html=True)
 
-# 2. CAPA DE AUTENTICACIÓN
+# 2. CAPA DE AUTENTICACIÓN (COHERE CLIENT V2)
 if "COHERE_API_KEY" in st.secrets:
     api_key = st.secrets["COHERE_API_KEY"]
     co = cohere.ClientV2(api_key=api_key)
@@ -20,7 +20,7 @@ else:
     api_key = None
     co = None
 
-# Sidebar informativa obligatoria para la entrega
+# Sidebar informativa de auditoría académica obligatoria
 st.sidebar.header("Control de Despliegue")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
@@ -30,7 +30,7 @@ if api_key:
 else:
     st.sidebar.warning("⚠️ Falta COHERE_API_KEY en los Secrets")
 
-# 3. DESPLEGABLE DE INFORMACIÓN DE USO (REQUISITO REQUERIDO)
+# 3. DESPLEGABLE INFORMATIVO DE USO (REQUISITO REQUERIDO)
 with st.expander("ℹ️ Guía de uso de SyncStudy IA — ¡Leé esto antes de empezar!"):
     st.markdown("""
     ### 📌 Pasos importantes para el correcto funcionamiento:
@@ -54,13 +54,13 @@ elif texto_manual:
     texto_final = texto_manual
     st.info("Texto insertado correctamente y listo para procesarse.")
 
-# Tamaño máximo de caracteres por bloque para no saturar la ventana de tokens de la API (aprox 40.000 palabras)
+# Tamaño máximo de caracteres por bloque para control de cuota (aprox 40.000 palabras)
 TAMANO_CHUNK = 150000
 
 # 5. PIPELINE DE INFERENCIA SEGMENTADA (CORE PAGINATION LAYER)
 st.markdown("### 2. Ejecutar Análisis Pedagógico")
 
-# Si el usuario cambia el texto o archivo de entrada, reseteamos el paginado de la sesión
+# Si cambia la entrada de datos, reiniciamos las variables de control de la sesión
 if 'texto_previo' not in st.session_state or st.session_state['texto_previo'] != texto_final:
     st.session_state['texto_previo'] = texto_final
     st.session_state['indice_bloque'] = 0
@@ -76,38 +76,10 @@ system_prompt = (
     "2. Un cuestionario interactivo de autoevaluación compuesto por 5 preguntas clave basadas estrictamente en la lectura de esta sección."
 )
 
-# Inicializamos las variables de control si hay texto válido
+# Inicialización de la matriz de bloques si hay información montada
 if texto_final and 'bloques_texto' not in st.session_state:
-    # Dividimos el texto en bloques respetando el límite de tamaño
     st.session_state['bloques_texto'] = [texto_final[i:i+TAMANO_CHUNK] for i in range(0, len(texto_final), TAMANO_CHUNK)]
     st.session_state['historial_analisis'] = {}
 
-# Mostrar información de bloques detectados si el archivo es grande
-if texto_final and 'bloques_texto' in st.session_state:
-    total_bloques = len(st.session_state['bloques_texto'])
-    bloque_actual = st.session_state['indice_bloque'] + 1
-    if total_bloques > 1:
-        st.warning(f"📋 Documento extenso detectado. Se fragmentó en {total_bloques} partes. Estás procesando la parte {bloque_actual} de {total_bloques}.")
-
-col1, col2 = st.columns(2)
-
-with col1:
-    boton_procesar = st.button("🚀 Analizar Bloque Actual")
-
-with col2:
-    # Desplegar botón para pasar a la siguiente parte si existen bloques restantes
-    if texto_final and 'bloques_texto' in st.session_state and len(st.session_state['bloques_texto']) > 1:
-        if st.session_state['indice_bloque'] < len(st.session_state['bloques_texto']) - 1:
-            if st.button("⏭️ Cargar Siguiente Parte"):
-                st.session_state['indice_bloque'] += 1
-                st.rerun()
-
-# Lógica de llamada a la API
-if boton_procesar:
-    if not api_key or not co:
-        st.error("Error de Backend: No se detectaron credenciales válidas de Cohere en los Secrets.")
-    elif not texto_final:
-        st.warning("Validación fallida: Por favor, asegurate de esperar la confirmación de carga e ingresar contenido válido.")
-    else:
-        idx = st.session_state['indice_bloque']
-        texto_a
+# Interfaz de navegación para paginación de documentos extensos
+if texto_final and 'bloques_texto
