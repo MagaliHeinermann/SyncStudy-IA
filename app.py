@@ -81,5 +81,62 @@ if texto_final and 'bloques_texto' not in st.session_state:
     st.session_state['bloques_texto'] = [texto_final[i:i+TAMANO_CHUNK] for i in range(0, len(texto_final), TAMANO_CHUNK)]
     st.session_state['historial_analisis'] = {}
 
-# Interfaz de navegación para paginación de documentos extensos
-if texto_final and 'bloques_texto
+# Interfaz de navegación para paginación de documentos extensos - ERROR DE SINTAXIS CORREGIDO AQUÍ
+if texto_final and 'bloques_texto' in st.session_state:
+    total_bloques = len(st.session_state['bloques_texto'])
+    bloque_actual = st.session_state['indice_bloque'] + 1
+    if total_bloques > 1:
+        st.warning(f"📋 Documento extenso detectado. Se fragmentó en {total_bloques} partes. Estás procesando la parte {bloque_actual} de {total_bloques}.")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    boton_procesar = st.button("🚀 Analizar Bloque Actual")
+
+with col2:
+    if texto_final and 'bloques_texto' in st.session_state and len(st.session_state['bloques_texto']) > 1:
+        if st.session_state['indice_bloque'] < len(st.session_state['bloques_texto']) - 1:
+            if st.button("⏭️ Cargar Siguiente Parte"):
+                st.session_state['indice_bloque'] += 1
+                st.rerun()
+
+# Orquestación de llamadas y almacenamiento persistente en memoria local
+if boton_procesar:
+    if not api_key or not co:
+        st.error("Error de Backend: No se detectaron credenciales válidas de Cohere en los Secrets.")
+    elif not texto_final:
+        st.warning("Validación fallida: Por favor, asegurate de esperar la confirmación de carga e ingresar contenido válido.")
+    else:
+        idx = st.session_state['indice_bloque']
+        texto_a_enviar = st.session_state['bloques_texto'][idx]
+        
+        with st.spinner(f"Cohere está analizando de forma inteligente la Parte {idx + 1}..."):
+            try:
+                response = co.chat(
+                    model="command-r7b-12-2024",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Analizá exhaustivamente la parte {idx + 1} del material de estudio provisto:\n\n{texto_a_enviar}"}
+                    ]
+                )
+                
+                if response and response.message and response.message.content:
+                    st.session_state['historial_analisis'][idx] = response.message.content[0].text
+                else:
+                    st.error("El servidor procesó la solicitud pero la respuesta del contenido regresó vacía.")
+            except Exception as e:
+                st.error(f"Falla controlada en el pipeline de ejecución de la API: {e}")
+
+# 6. CAPA DE RENDERIZADO DE RESULTADOS ACUMULATIVOS (OUTPUT LAYER)
+if 'historial_analisis' in st.session_state and st.session_state['historial_analisis']:
+    st.markdown("---")
+    st.markdown("### ✨ Resultados del Análisis Pedagógico")
+    
+    # Renderizado ordenado secuencial de los bloques procesados
+    for index, resultado in sorted(st.session_state['historial_analisis'].items()):
+        with st.container():
+            st.markdown(f"#### 📦 Análisis - Parte {index + 1}")
+            st.write(resultado)
+            st.markdown("<hr style='border: 1px dashed #D1D5DB;' />", unsafe_allow_html=True)
+
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem; margin-top: 50px;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
