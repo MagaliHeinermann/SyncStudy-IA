@@ -1,280 +1,88 @@
 import streamlit as st
 import pdfplumber
-import time
+import cohere
 
-from google import genai
-from google.genai import types
-
-# =====================================================
-# CONFIGURACIÓN GENERAL
-# =====================================================
-
+# 1. CONFIGURACIÓN DE LA INTERFAZ
 st.set_page_config(
     page_title="SyncStudy IA",
     page_icon="🧠",
     layout="centered"
 )
 
-st.markdown(
-    """
-    <h1 style="text-align:center; color:#1E3A8A;">
-        🧠 SyncStudy IA
-    </h1>
+st.markdown('<h1 style="text-align: center; color: #1E3A8A;">🧠 SyncStudy IA</h1>', unsafe_allow_html=True)
+st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">Optimización de material de estudio con Inteligencia Artificial (Engine: Cohere)</p>', unsafe_allow_html=True)
 
-    <p style="text-align:center; color:#4B5563;">
-        Optimización de material de estudio con Inteligencia Artificial
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+# 2. CAPA DE AUTENTICACIÓN (COHERE API)
+if "COHERE_API_KEY" in st.secrets:
+    api_key = st.secrets["COHERE_API_KEY"]
+    # Inicialización del cliente oficial de Cohere
+    co = cohere.ClientV2(api_key=api_key)
+else:
+    api_key = None
+    co = None
 
-# =====================================================
-# API KEY
-# =====================================================
-
-api_key = st.secrets.get("GEMINI_API_KEY", None)
-
-# =====================================================
-# CLIENTE GEMINI
-# =====================================================
-
-@st.cache_resource
-def get_client():
-    return genai.Client(api_key=api_key)
-
-# =====================================================
-# SIDEBAR
-# =====================================================
-
+# Sidebar informativa de auditoría requerida para la entrega
 st.sidebar.header("Control de Despliegue")
-
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
-
 st.sidebar.markdown("---")
-
 if api_key:
-    st.sidebar.success("🔑 GEMINI_API_KEY detectada")
+    st.sidebar.success("🔑 Motor Cohere inicializado correctamente")
 else:
-    st.sidebar.error("❌ GEMINI_API_KEY no encontrada")
+    st.sidebar.warning("⚠️ Esperando COHERE_API_KEY en Secrets...")
 
-# =====================================================
-# ENTRADA DE DATOS
-# =====================================================
-
+# 3. COMPONENTES DE ENTRADA DE DATOS (INPUT LAYER)
 st.markdown("### 1. Carga de Material Académico")
-
-texto_manual = st.text_area(
-    "Pega tus apuntes o extractos aquí:",
-    height=180
-)
-
-archivo_pdf = st.file_uploader(
-    "O sube un archivo PDF",
-    type=["pdf"]
-)
+texto_manual = st.text_area("Pega tus apuntes o extractos de texto aquí:", height=150)
+archivo_pdf = st.file_uploader("O sube tu material en formato académico (PDF)", type=["pdf"])
 
 texto_final = ""
-
-# =====================================================
-# LECTURA PDF
-# =====================================================
-
 if archivo_pdf is not None:
-
-    try:
-
-        with pdfplumber.open(archivo_pdf) as pdf:
-
-            paginas = []
-
-            for page in pdf.pages:
-
-                contenido = page.extract_text()
-
-                if contenido:
-                    paginas.append(contenido)
-
-            texto_final = "\n".join(paginas)
-
-        st.success("✅ PDF procesado correctamente.")
-
-    except Exception as e:
-
-        st.error(f"❌ Error al procesar PDF: {e}")
-
+    with pdfplumber.open(archivo_pdf) as pdf:
+        texto_final = "\n".join([page.extract_text() for page in pdf.pages if page.extract_text()])
+    st.success("Parser: PDF procesado correctamente en la sesión.")
 elif texto_manual:
-
     texto_final = texto_manual
 
-# =====================================================
-# INFO TEXTO
-# =====================================================
+# 4. PIPELINE DE INFERENCIA (CORE LAYER)
+st.markdown("### 2. Ejecutar Análisis Pedagógico")
+boton_procesar = st.button("🚀 Procesar Material de Estudio")
 
-if texto_final:
-
-    st.info(
-        f"📄 Caracteres cargados: {len(texto_final):,}"
-    )
-
-# =====================================================
-# PROMPT
-# =====================================================
-
-system_prompt = """
-Actúa como un experto en diseño instruccional y pedagogía avanzada.
-
-A partir del texto proporcionado por el usuario debes generar:
-
-1. Una síntesis jerárquica con los conceptos centrales.
-2. Explicaciones claras y analíticas.
-3. Un cuestionario de autoevaluación con 5 preguntas.
-4. Una sección de conceptos clave para memorizar.
-5. Consejos de estudio basados en el contenido analizado.
-
-La respuesta debe estar perfectamente organizada mediante títulos y subtítulos.
-"""
-
-# =====================================================
-# DIVIDIR TEXTO
-# =====================================================
-
-def dividir_texto(texto, tamaño=30000):
-
-    return [
-        texto[i:i+tamaño]
-        for i in range(0, len(texto), tamaño)
-    ]
-
-# =====================================================
-# BOTÓN
-# =====================================================
-
-st.markdown("### 2. Ejecutar Análisis Cognitivo")
-
-boton_procesar = st.button(
-    "🚀 Procesar Material de Estudio",
-    use_container_width=True
+system_prompt = (
+    "Actúas como un experto en diseño instruccional y pedagogía avanzada.\n"
+    "A partir del texto provisto por el usuario, debes generar de forma estructurada:\n"
+    "1. Una síntesis jerárquica con los conceptos centrales perfectamente definidos de forma analítica.\n"
+    "2. Un cuestionario interactivo de autoevaluación compuesto por 5 preguntas clave basadas estrictamente en la lectura."
 )
-
-# =====================================================
-# PROCESAMIENTO IA
-# =====================================================
 
 if boton_procesar:
-
-    if not api_key:
-
-        st.error(
-            "❌ No se encontró GEMINI_API_KEY."
-        )
-
-    elif not texto_final.strip():
-
-        st.warning(
-            "⚠️ Debes ingresar texto o subir un PDF."
-        )
-
+    if not api_key or not co:
+        st.error("Error de Backend: No se detectaron credenciales válidas de Cohere en st.secrets.")
+    elif not texto_final:
+        st.warning("Validación fallida: El campo de entrada de datos no puede estar vacío.")
     else:
-
-        try:
-
-            with st.spinner(
-                "🧠 Analizando material..."
-            ):
-
-                client = get_client()
-
-                partes = dividir_texto(
-                    texto_final,
-                    tamaño=30000
+        with st.spinner("Procesando consulta con el clúster de Cohere..."):
+            try:
+                # Llamada limpia usando la API V2 de Cohere con soporte nativo de System Prompt
+                response = co.chat(
+                    model="command-r-plus",
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": f"Por favor optimiza el siguiente material de estudio:\n\n{texto_final}"}
+                    ]
                 )
+                
+                # Extracción segura del texto resultante
+                st.session_state['data_output'] = response.message.content[0].text
+                
+            except Exception as e:
+                st.error(f"Error crítico en la comunicación con Cohere: {e}")
 
-                respuestas = []
-
-                progreso = st.progress(0)
-
-                for i, parte in enumerate(partes):
-
-                    response = client.models.generate_content(
-
-                        # =================================
-                        # GEMINI 2.5 FLASH
-                        # =================================
-
-                        model="gemini-2.5-flash-preview-05-20",
-
-                        contents=parte,
-
-                        config=types.GenerateContentConfig(
-                            system_instruction=system_prompt,
-                            temperature=0.3,
-                        )
-                    )
-
-                    respuestas.append(
-                        response.text
-                    )
-
-                    progreso.progress(
-                        (i + 1) / len(partes)
-                    )
-
-                    time.sleep(2)
-
-                resultado_final = "\n\n".join(
-                    respuestas
-                )
-
-                st.session_state[
-                    "data_output"
-                ] = resultado_final
-
-                st.success(
-                    "✅ Material procesado correctamente."
-                )
-
-        except Exception as e:
-
-            st.error(
-                f"""
-❌ Error al comunicarse con Gemini:
-
-{str(e)}
-"""
-            )
-
-# =====================================================
-# RESULTADO
-# =====================================================
-
-if "data_output" in st.session_state:
-
+# 5. CAPA DE RENDERIZADO DE RESULTADOS (OUTPUT LAYER)
+if 'data_output' in st.session_state:
     st.markdown("---")
-
-    st.markdown(
-        "## ✨ Material de Estudio Optimizado"
-    )
-
-    st.markdown(
-        st.session_state["data_output"]
-    )
-
-# =====================================================
-# FOOTER
-# =====================================================
+    st.markdown("### ✨ Material de Estudio Optimizado")
+    st.write(st.session_state['data_output'])
 
 st.markdown("---")
-
-st.markdown(
-    """
-    <p style='text-align:center;
-              color:#9CA3AF;
-              font-size:0.8rem;'>
-
-        SyncStudy IA © 2026
-
-    </p>
-    """,
-    unsafe_allow_html=True
-)
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
