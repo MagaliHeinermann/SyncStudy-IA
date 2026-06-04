@@ -30,14 +30,13 @@ if api_key:
 else:
     st.sidebar.warning("⚠️ Falta COHERE_API_KEY en los Secrets")
 
-# 3. DESPLEGABLE INFORMATIVO DE USO (REQUISITO REQUERIDO)
+# 3. DESPLEGABLE INFORMATIVO DE USO
 with st.expander("ℹ️ Guía de uso de SyncStudy IA — ¡Leé esto antes de empezar!"):
     st.markdown("""
     ### 📌 Pasos importantes para el correcto funcionamiento:
     1. **Carga de Datos:** Pegá tu texto o subí tu archivo PDF en la sección correspondiente.
-    2. **Confirmación de Carga (Crucial):** Antes de presionar cualquier botón de análisis, **debés esperar a que aparezca el mensaje de éxito en verde** (`¡PDF cargado exitosamente!` o el indicador de texto listo). Si presionás el botón antes de esto, el sistema procesará un campo vacío.
-    3. **Procesamiento de Archivos Largos:** Si tu material es extenso, la app lo fragmentará automáticamente en bloques óptimos para la API. Podrás analizar y leer las siguientes partes de manera secuencial presionando el botón de navegación que aparecerá abajo.
-    4. **Tiempos de Espera:** Las solicitudes pueden demorar unos segundos dependiendo del tráfico de la API. No recargues la página mientras veas el indicador de carga (*Spinner*).
+    2. **Confirmación de Carga:** Antes de presionar cualquier botón de análisis, **debés esperar a que aparezca el mensaje de éxito en verde**.
+    3. **Procesamiento por Partes:** Si tu material es extenso, la app lo dividirá automáticamente en bloques óptimos. Presioná el botón para analizar la parte actual, y cuando termine, el sistema te habilitará automáticamente el procesamiento de la siguiente sección.
     """)
 
 # 4. CAPA DE ENTRADA DE DATOS (INPUT LAYER)
@@ -54,20 +53,19 @@ elif texto_manual:
     texto_final = texto_manual
     st.info("Texto insertado correctamente y listo para procesarse.")
 
-# Tamaño máximo de caracteres por bloque para control de cuota (aprox 40.000 palabras)
-TAMANO_CHUNK = 150000
+# Tamaño máximo de caracteres por bloque para control de cuota (aprox 35.000 palabras)
+TAMANO_CHUNK = 130000
 
-# 5. PIPELINE DE INFERENCIA SEGMENTADA (CORE PAGINATION LAYER)
+# 5. PIPELINE DE INFERENCIA SEGMENTADA (CORE LAYER)
 st.markdown("### 2. Ejecutar Análisis Pedagógico")
 
-# Si cambia la entrada de datos, reiniciamos las variables de control de la sesión
+# Control de reseteo de estados si cambia el origen del texto
 if 'texto_previo' not in st.session_state or st.session_state['texto_previo'] != texto_final:
     st.session_state['texto_previo'] = texto_final
     st.session_state['indice_bloque'] = 0
+    st.session_state['historial_analisis'] = {}
     if 'bloques_texto' in st.session_state:
         del st.session_state['bloques_texto']
-    if 'historial_analisis' in st.session_state:
-        del st.session_state['historial_analisis']
 
 system_prompt = (
     "Actúas como un experto en diseño instruccional y pedagogía avanzada.\n"
@@ -76,67 +74,67 @@ system_prompt = (
     "2. Un cuestionario interactivo de autoevaluación compuesto por 5 preguntas clave basadas estrictamente en la lectura de esta sección."
 )
 
-# Inicialización de la matriz de bloques si hay información montada
+# Inicialización de bloques distribuidos
 if texto_final and 'bloques_texto' not in st.session_state:
     st.session_state['bloques_texto'] = [texto_final[i:i+TAMANO_CHUNK] for i in range(0, len(texto_final), TAMANO_CHUNK)]
-    st.session_state['historial_analisis'] = {}
 
-# Interfaz de navegación para paginación de documentos extensos - ERROR DE SINTAXIS CORREGIDO AQUÍ
+# Lógica y renderizado de la botonera secuencial única
 if texto_final and 'bloques_texto' in st.session_state:
-    total_bloques = len(st.session_state['bloques_texto'])
-    bloque_actual = st.session_state['indice_bloque'] + 1
+    bloques = st.session_state['bloques_texto']
+    total_bloques = len(bloques)
+    idx_actual = st.session_state['indice_bloque']
+    
     if total_bloques > 1:
-        st.warning(f"📋 Documento extenso detectado. Se fragmentó en {total_bloques} partes. Estás procesando la parte {bloque_actual} de {total_bloques}.")
+        st.warning(f"📋 Documento extenso detectado. Fragmentado en {total_bloques} partes.")
+        # Barra de progreso visual para el seguimiento del alumno
+        progreso = (idx_actual) / total_bloques
+        st.progress(progreso, text=f"Progreso del documento: Parte {idx_actual + 1} de {total_bloques}")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    boton_procesar = st.button("🚀 Analizar Bloque Actual")
-
-with col2:
-    if texto_final and 'bloques_texto' in st.session_state and len(st.session_state['bloques_texto']) > 1:
-        if st.session_state['indice_bloque'] < len(st.session_state['bloques_texto']) - 1:
-            if st.button("⏭️ Cargar Siguiente Parte"):
-                st.session_state['indice_bloque'] += 1
-                st.rerun()
-
-# Orquestación de llamadas y almacenamiento persistente en memoria local
-if boton_procesar:
-    if not api_key or not co:
-        st.error("Error de Backend: No se detectaron credenciales válidas de Cohere en los Secrets.")
-    elif not texto_final:
-        st.warning("Validación fallida: Por favor, asegurate de esperar la confirmación de carga e ingresar contenido válido.")
+    # Botón dinámico único de procesamiento secuencial
+    if idx_actual < total_bloques:
+        texto_boton = f"🚀 Procesar y Analizar Parte {idx_actual + 1}"
+        if st.button(texto_boton, use_container_width=True):
+            if not api_key or not co:
+                st.error("Error de Backend: Credenciales de Cohere no detectadas.")
+            else:
+                texto_a_enviar = bloques[idx_actual]
+                with st.spinner(f"Cohere está analizando de forma inteligente la Parte {idx_actual + 1}..."):
+                    try:
+                        response = co.chat(
+                            model="command-r7b-12-2024",
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                {"role": "user", "content": f"Analizá el siguiente bloque de estudio:\n\n{texto_a_enviar}"}
+                            ]
+                        )
+                        
+                        if response and response.message and response.message.content:
+                            # Guardamos de forma persistente en el historial el bloque resuelto
+                            st.session_state['historial_analisis'][idx_actual] = response.message.content[0].text
+                            # Incrementamos el índice de la sesión de forma inmediata para preparar el siguiente bloque
+                            st.session_state['indice_bloque'] += 1
+                            st.rerun()
+                        else:
+                            st.error("La API de Cohere devolvió un cuerpo de texto vacío.")
+                    except Exception as e:
+                        st.error(f"Falla controlada en el pipeline de la API: {e}")
     else:
-        idx = st.session_state['indice_bloque']
-        texto_a_enviar = st.session_state['bloques_texto'][idx]
-        
-        with st.spinner(f"Cohere está analizando de forma inteligente la Parte {idx + 1}..."):
-            try:
-                response = co.chat(
-                    model="command-r7b-12-2024",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Analizá exhaustivamente la parte {idx + 1} del material de estudio provisto:\n\n{texto_a_enviar}"}
-                    ]
-                )
-                
-                if response and response.message and response.message.content:
-                    st.session_state['historial_analisis'][idx] = response.message.content[0].text
-                else:
-                    st.error("El servidor procesó la solicitud pero la respuesta del contenido regresó vacía.")
-            except Exception as e:
-                st.error(f"Falla controlada en el pipeline de ejecución de la API: {e}")
+        st.success("✅ ¡Felicidades! Has completado el procesamiento y optimización de todo el documento de estudio.")
+        if st.button("🔄 Reiniciar análisis desde la Parte 1"):
+            st.session_state['indice_bloque'] = 0
+            st.session_state['historial_analisis'] = {}
+            st.rerun()
 
-# 6. CAPA DE RENDERIZADO DE RESULTADOS ACUMULATIVOS (OUTPUT LAYER)
+# 6. CAPA DE RENDERIZADO ACUMULATIVO DE RESULTADOS (OUTPUT LAYER)
 if 'historial_analisis' in st.session_state and st.session_state['historial_analisis']:
     st.markdown("---")
     st.markdown("### ✨ Resultados del Análisis Pedagógico")
     
-    # Renderizado ordenado secuencial de los bloques procesados
-    for index, resultado in sorted(st.session_state['historial_analisis'].items()):
+    # Renderizamos de manera ordenada secuencial absoluta de menor a mayor todos los bloques procesados
+    for index in sorted(st.session_state['historial_analisis'].keys()):
         with st.container():
-            st.markdown(f"#### 📦 Análisis - Parte {index + 1}")
-            st.write(resultado)
+            st.markdown(f"#### 📦 Contenido Optimizado - Parte {index + 1}")
+            st.write(st.session_state['historial_analisis'][index])
             st.markdown("<hr style='border: 1px dashed #D1D5DB;' />", unsafe_allow_html=True)
 
 st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem; margin-top: 50px;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
