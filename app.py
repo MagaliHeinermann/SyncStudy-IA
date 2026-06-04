@@ -15,19 +15,18 @@ st.markdown('<p style="text-align: center; color: #4B5563; text-align: center;">
 # 2. CAPA DE AUTENTICACIÓN (COHERE API)
 if "COHERE_API_KEY" in st.secrets:
     api_key = st.secrets["COHERE_API_KEY"]
-    # Inicialización del cliente oficial de Cohere
     co = cohere.ClientV2(api_key=api_key)
 else:
     api_key = None
     co = None
 
-# Sidebar informativa de auditoría requerida para la entrega
+# Sidebar informativa requerida para la entrega
 st.sidebar.header("Control de Despliegue")
 st.sidebar.markdown("**Estudiante:** Magali Heinermann")
 st.sidebar.markdown("**Comisión:** 95840")
 st.sidebar.markdown("---")
 if api_key:
-    st.sidebar.success("🔑 Motor Cohere inicializado correctamente")
+    st.sidebar.success("🔑 Motor Cohere listo y autenticado")
 else:
     st.sidebar.warning("⚠️ Esperando COHERE_API_KEY en Secrets...")
 
@@ -58,31 +57,3 @@ system_prompt = (
 if boton_procesar:
     if not api_key or not co:
         st.error("Error de Backend: No se detectaron credenciales válidas de Cohere en st.secrets.")
-    elif not texto_final:
-        st.warning("Validación fallida: El campo de entrada de datos no puede estar vacío.")
-    else:
-        with st.spinner("Procesando consulta con el clúster de Cohere..."):
-            try:
-                # Llamada limpia usando la API V2 de Cohere con soporte nativo de System Prompt
-                response = co.chat(
-                    model="command-r-plus",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": f"Por favor optimiza el siguiente material de estudio:\n\n{texto_final}"}
-                    ]
-                )
-                
-                # Extracción segura del texto resultante
-                st.session_state['data_output'] = response.message.content[0].text
-                
-            except Exception as e:
-                st.error(f"Error crítico en la comunicación con Cohere: {e}")
-
-# 5. CAPA DE RENDERIZADO DE RESULTADOS (OUTPUT LAYER)
-if 'data_output' in st.session_state:
-    st.markdown("---")
-    st.markdown("### ✨ Material de Estudio Optimizado")
-    st.write(st.session_state['data_output'])
-
-st.markdown("---")
-st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
