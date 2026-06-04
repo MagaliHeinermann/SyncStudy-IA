@@ -162,4 +162,4 @@ if 'historial_analisis' in st.session_state and st.session_state['historial_anal
             st.write(cuerpo_respuesta)
             st.markdown("<hr style='border: 1px dashed #D1D5DB;' />", unsafe_allow_html=True)
 
-st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem; margin-top: 50px;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
