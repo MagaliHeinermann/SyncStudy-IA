@@ -36,7 +36,7 @@ with st.expander("ℹ️ Guía de uso de SyncStudy IA — ¡Leé esto antes de e
     ### 📌 Pasos importantes para el correcto funcionamiento:
     1. **Carga de Datos:** Pegá tu texto o subí tu archivo PDF en la sección correspondiente.
     2. **Confirmación de Carga:** Antes de presionar cualquier botón de análisis, **debés esperar a que aparezca el mensaje de éxito en verde**.
-    3. **Procesamiento por Partes:** Si tu material es extenso, la app lo dividirá automáticamente en bloques óptimos. Presioná el botón para analizar la parte actual, y cuando termine, el sistema te habilitará automáticamente el procesamiento de la siguiente sección.
+    3. **Procesamiento por Temas:** Si tu material es extenso, la app lo fragmentará automáticamente. Al presionar el botón de procesar, la IA leerá esa sección, le asignará un título representativo en base al contenido y pasará al siguiente bloque de forma secuencial.
     """)
 
 # 4. CAPA DE ENTRADA DE DATOS (INPUT LAYER)
@@ -59,7 +59,7 @@ TAMANO_CHUNK = 130000
 # 5. PIPELINE DE INFERENCIA SEGMENTADA (CORE LAYER)
 st.markdown("### 2. Ejecutar Análisis Pedagógico")
 
-# Control de reseteo de estados si cambia el origen del texto
+# Control de reseteo de estados si cambia el origen del texto o el archivo
 if 'texto_previo' not in st.session_state or st.session_state['texto_previo'] != texto_final:
     st.session_state['texto_previo'] = texto_final
     st.session_state['indice_bloque'] = 0
@@ -69,8 +69,11 @@ if 'texto_previo' not in st.session_state or st.session_state['texto_previo'] !=
 
 system_prompt = (
     "Actúas como un experto en diseño instruccional y pedagogía avanzada.\n"
-    "A partir del fragmento de texto de estudio provisto por el usuario, debes generar de forma estructurada:\n"
-    "1. Una síntesis jerárquica con los conceptos centrales de esta parte perfectamente definidos de forma analítica.\n"
+    "REQUISITO OBLIGATORIO DE ARQUITECTURA: La primerísima línea de tu respuesta debe ser SIEMPRE un título sintético y representativo "
+    "del tema principal que trata el fragmento de texto provisto, envuelto exactamente con el formato: [TITULO: Nombre del Tema]. "
+    "No pongas saludos ni introducciones antes de esa etiqueta.\n\n"
+    "Luego de esa línea, genera de forma estructurada:\n"
+    "1. Una síntesis jerárquica con los conceptos centrales perfectamente definidos de forma analítica.\n"
     "2. Un cuestionario interactivo de autoevaluación compuesto por 5 preguntas clave basadas estrictamente en la lectura de esta sección."
 )
 
@@ -86,7 +89,6 @@ if texto_final and 'bloques_texto' in st.session_state:
     
     if total_bloques > 1:
         st.warning(f"📋 Documento extenso detectado. Fragmentado en {total_bloques} partes.")
-        # Barra de progreso visual para el seguimiento del alumno
         progreso = (idx_actual) / total_bloques
         st.progress(progreso, text=f"Progreso del documento: Parte {idx_actual + 1} de {total_bloques}")
 
@@ -111,7 +113,6 @@ if texto_final and 'bloques_texto' in st.session_state:
                         if response and response.message and response.message.content:
                             # Guardamos de forma persistente en el historial el bloque resuelto
                             st.session_state['historial_analisis'][idx_actual] = response.message.content[0].text
-                            # Incrementamos el índice de la sesión de forma inmediata para preparar el siguiente bloque
                             st.session_state['indice_bloque'] += 1
                             st.rerun()
                         else:
@@ -120,7 +121,7 @@ if texto_final and 'bloques_texto' in st.session_state:
                         st.error(f"Falla controlada en el pipeline de la API: {e}")
     else:
         st.success("✅ ¡Felicidades! Has completado el procesamiento y optimización de todo el documento de estudio.")
-        if st.button("🔄 Reiniciar análisis desde la Parte 1"):
+        if st.button("🔄 Reiniciar análisis desde el inicio"):
             st.session_state['indice_bloque'] = 0
             st.session_state['historial_analisis'] = {}
             st.rerun()
@@ -128,13 +129,37 @@ if texto_final and 'bloques_texto' in st.session_state:
 # 6. CAPA DE RENDERIZADO ACUMULATIVO DE RESULTADOS (OUTPUT LAYER)
 if 'historial_analisis' in st.session_state and st.session_state['historial_analisis']:
     st.markdown("---")
-    st.markdown("### ✨ Resultados del Análisis Pedagógico")
+    st.markdown("### ✨ Material de Estudio Optimizado")
     
-    # Renderizamos de manera ordenada secuencial absoluta de menor a mayor todos los bloques procesados
+    # Renderizamos secuencialmente los bloques procesados
     for index in sorted(st.session_state['historial_analisis'].keys()):
+        respuesta_cruda = st.session_state['historial_analisis'][index]
+        
+        # Lógica de Extracción de Título Dinámico por Backend
+        titulo_seccion = f"Parte {index + 1} - Contenido General"
+        cuerpo_respuesta = respuesta_cruda
+        
+        if "[TITULO:" in respuesta_cruda and "]" in respuesta_cruda:
+            try:
+                inicio = respuesta_cruda.find("[TITULO:") + len("[TITULO:")
+                fin = respuesta_cruda.find("]", inicio)
+                extracted_title = respuesta_cruda[inicio:fin].strip()
+                if extracted_title:
+                    titulo_seccion = f"📚 {extracted_title}"
+                # Removemos la etiqueta del título del cuerpo para que no se duplique visualmente
+                cuerpo_respuesta = respuesta_cruda[fin + 1:].strip()
+            except Exception:
+                pass
+                
         with st.container():
-            st.markdown(f"#### 📦 Contenido Optimizado - Parte {index + 1}")
-            st.write(st.session_state['historial_analisis'][index])
+            # Encabezado estilizado con el tema real extraído por la IA
+            st.markdown(f"""
+                <div style="background-color: #F3F4F6; padding: 10px; border-left: 5px solid #1E3A8A; border-radius: 4px; margin-bottom: 15px; margin-top: 20px;">
+                    <h4 style="margin: 0; color: #1E3A8A;">{titulo_seccion}</h4>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.write(cuerpo_respuesta)
             st.markdown("<hr style='border: 1px dashed #D1D5DB;' />", unsafe_allow_html=True)
 
-st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0.8rem; margin-top: 50px;'>SyncStudy IA © 2026</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #9CA3AF; font-size: 0
